@@ -195,8 +195,12 @@ internal sealed class FloatingBar : Form
         var sessions = await CodexFork.ReadSessionsAsync(cancellationToken);
         if (!Native.IsWindow(source)) throw new InvalidOperationException("The source terminal has closed.");
         var session = CodexSessions.Select(sessions, source, Native.WindowTitle(source));
-        await CodexFork.OpenAsync(session, cancellationToken);
-        if (!IsDisposed) await Arrange(display);
+        nint forkedWindow = await CodexFork.OpenAsync(session, cancellationToken);
+        if (!IsDisposed)
+        {
+            arranger.AppendWindow(forkedWindow);
+            await Arrange(display);
+        }
     }
 
     private void DisplaySettingsChanged(object? sender, EventArgs e)

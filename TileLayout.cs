@@ -63,12 +63,27 @@ internal sealed class WindowArranger
     internal WindowArranger(Func<List<TerminalWindow>>? findWindows = null) =>
         this.findWindows = findWindows ?? TerminalWindows.Find;
 
-    internal async Task<ArrangementResult> ArrangeAsync(DisplayInfo display)
+    private List<TerminalWindow> OrderedWindows()
     {
         var rank = previousOrder.Select((hwnd, i) => (hwnd, i)).ToDictionary(x => x.hwnd, x => x.i);
-        var windows = findWindows().Where(w => Native.IsWindow(w.Handle))
+        return findWindows().Where(w => Native.IsWindow(w.Handle))
             .OrderBy(w => rank.GetValueOrDefault(w.Handle, int.MaxValue))
+            // After a restart, recover the existing grid's reading order.
+            .ThenBy(w => Native.VisibleBounds(w.Handle).Top)
+            .ThenBy(w => Native.VisibleBounds(w.Handle).Left)
             .ThenBy(w => w.ProcessId).ThenBy(w => w.Handle.ToInt64()).ToList();
+    }
+
+    internal void AppendWindow(nint handle)
+    {
+        var windows = OrderedWindows();
+        previousOrder = windows.Where(w => w.Handle != handle).Select(w => w.Handle).ToList();
+        if (windows.Any(w => w.Handle == handle)) previousOrder.Add(handle);
+    }
+
+    internal async Task<ArrangementResult> ArrangeAsync(DisplayInfo display)
+    {
+        var windows = OrderedWindows();
         previousOrder = windows.Select(w => w.Handle).ToList();
         if (windows.Count == 0) return new ArrangementResult(0, 0);
 

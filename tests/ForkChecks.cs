@@ -191,6 +191,52 @@ internal static partial class Checks
     private static nint IconAtPoint(ForkButtonWindow button) => Native.GetAncestor(Native.WindowFromPoint(
         new Native.Point2(button.Left + button.Width / 2, button.Top + button.Height / 2)), 2);
 
+    private static async Task VerifyForkOrder()
+    {
+        foreach (var display in DisplayInfo.ReadAll())
+        foreach (bool arrangedBefore in new[] { false, true })
+        {
+            var windows = Enumerable.Range(0, 5).Select(i => new UnfocusedWindow
+            {
+                Text = "Fork order test " + (i + 1), StartPosition = FormStartPosition.Manual,
+                MinimumSize = new Size(120, 80)
+            }).ToArray();
+            try
+            {
+                var initialCells = TileLayout.Plan(display.WorkingArea, 3);
+                for (int i = 0; i < 3; i++)
+                {
+                    windows[i].Show();
+                    Native.MoveVisibleFrame(windows[i].Handle, initialCells[i]);
+                }
+                // Enumeration order differs from the visible grid order.
+                var scan = new[] { 2, 0, 1 }.Select(i => new TerminalWindow(windows[i].Handle, 100, "test", "test")).ToList();
+                var arranger = new WindowArranger(() => scan.ToList());
+                if (arrangedBefore) await arranger.ArrangeAsync(display);
+                for (int i = 3; i < windows.Length; i++)
+                {
+                    windows[i].Bounds = new Rectangle(display.WorkingArea.Left, display.WorkingArea.Top, 400, 300);
+                    windows[i].Show();
+                    // A new window that sorts first by both position and process ID
+                    // still belongs at the end, including on the first fork after restart.
+                    scan.Insert(0, new TerminalWindow(windows[i].Handle, 0, "test", "test"));
+                    arranger.AppendWindow(windows[i].Handle);
+                    await arranger.ArrangeAsync(display);
+                    var cells = TileLayout.Plan(display.WorkingArea, i + 1);
+                    var actual = windows.Take(i + 1).Select(w => Native.VisibleBounds(w.Handle)).ToArray();
+                    Assert(actual.Zip(cells).All(pair => Math.Abs(pair.First.Left - pair.Second.Left) <= 1 &&
+                        Math.Abs(pair.First.Top - pair.Second.Top) <= 1),
+                        $"Fork {i - 2} appends after the existing grid on monitor {display.Number}; prior arrangement: {arrangedBefore}");
+                    scan.Reverse();
+                    await arranger.ArrangeAsync(display);
+                    Assert(actual.SequenceEqual(windows.Take(i + 1).Select(w => Native.VisibleBounds(w.Handle))),
+                        "Refreshing preserves the original terminals followed by successive forks");
+                }
+            }
+            finally { foreach (var window in windows) window.Dispose(); }
+        }
+    }
+
     private static async Task VerifyTerminalLaunch()
     {
         string directory = Path.Combine(ArtifactPath, "fork's workspace; 文");

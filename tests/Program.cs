@@ -77,6 +77,7 @@ internal static partial class Checks
                 Assert(!TerminalWindows.Find().Any(w => samples.Any(s => s.Handle == w.Handle)), "Real terminal discovery excludes ordinary application windows");
                 await VerifyForkButtons();
                 await VerifyUnfocusedForkButtons();
+                await VerifyForkOrder();
                 await VerifyTerminalLaunch();
                 var empty = await new WindowArranger(() => []).ArrangeAsync(DisplayInfo.ReadAll()[0]);
                 Assert(empty.Found == 0 && empty.Arranged == 0, "Empty desktop result");

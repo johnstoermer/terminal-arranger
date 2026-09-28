@@ -5,7 +5,7 @@ A tiny, draggable, always-on-top monitor selector for Windows.
 - Click a monitor to gather and tile terminal windows on it. Click again to refresh.
 - Every terminal uses the same width. Incomplete rows leave empty space.
 - The focused terminal gets a white outline with a moving white highlight. It follows the window as you move or resize it, lets clicks pass through, and disappears when another app has focus.
-- Click the fork icon inside a terminal's bottom-right corner to open its Codex session in a new Windows Terminal window. The arrangement refreshes on the selected monitor, or the source monitor before a monitor has been selected.
+- Click the fork icon inside a terminal's bottom-right corner to open its Codex session in a new Windows Terminal window. The new window goes after the existing terminals in the grid. The arrangement refreshes on the selected monitor, or the source monitor before a monitor has been selected.
 - Drag the six dots to move the widget. The position and last selection are remembered.
 - Close with the × control or Escape. Launch it again from the desktop shortcut.
 - Monitor details and any arrangement errors appear only in tooltips.
