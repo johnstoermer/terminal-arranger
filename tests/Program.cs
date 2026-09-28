@@ -18,6 +18,7 @@ internal static partial class Checks
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        if (args.Length == 2 && args[0] == "--fork-button-host") { RunForkButtonHost(args[1]); return 0; }
         try
         {
             Geometry(); Classification(); ForkSelection();
@@ -75,6 +76,7 @@ internal static partial class Checks
                 Assert((Native.GetWindowLongPtr(bar.Handle, -20).ToInt64() & 8) != 0, "Widget has topmost window style");
                 Assert(!TerminalWindows.Find().Any(w => samples.Any(s => s.Handle == w.Handle)), "Real terminal discovery excludes ordinary application windows");
                 await VerifyForkButtons();
+                await VerifyUnfocusedForkButtons();
                 await VerifyTerminalLaunch();
                 var empty = await new WindowArranger(() => []).ArrangeAsync(DisplayInfo.ReadAll()[0]);
                 Assert(empty.Found == 0 && empty.Arranged == 0, "Empty desktop result");

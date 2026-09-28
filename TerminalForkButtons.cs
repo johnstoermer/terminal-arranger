@@ -143,9 +143,13 @@ internal sealed class ForkButtonWindow : Form
             Region?.Dispose();
             Region = new Region(outline);
         }
-        // Native ownership keeps the icon directly above its terminal in the
-        // stacking order, below other apps that cover the terminal.
         if (!Visible) Show(new OwnerWindow(source));
+        // Moving a terminal in another process can leave its owned icon behind
+        // it until activation. Restore the icon just above its owner on every
+        // refresh, without raising or focusing the terminal itself.
+        nint preceding = Native.GetWindow(source, 3); // GW_HWNDPREV
+        if (preceding != Handle)
+            Native.SetWindowPos(Handle, preceding, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0200);
     }
 
     internal void ShowError(string message)

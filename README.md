@@ -18,7 +18,7 @@ Recognizes Windows Terminal, classic Command Prompt/PowerShell/WSL consoles, PuT
 
 Forking requires a local Windows `codex.exe` session and Windows Terminal. It runs `codex fork <session-id> --cd <source-directory>` using the source executable and Codex home. PowerShell stays open when Codex exits. WSL and SSH sessions are not supported by session detection.
 
-The icon follows its terminal, stays below apps covering it, and hides when the terminal is minimized. It does not take keyboard focus. Further clicks are ignored until the new window is ready and the layout has refreshed. Errors appear in a tooltip.
+Every visible terminal has a fork icon, including windows that have never received focus. The icon follows its terminal, stays below apps covering it, and hides when the terminal is minimized. Further clicks are ignored until the new window is ready and the layout has refreshed. Errors appear in a tooltip.
 
 Session detection reads the metadata header of the rollout currently open for writing by each Codex process and maps its console to the terminal window. It does not choose the newest session or use `--last`. In a window with tabs or panes, the console title must uniquely match the active terminal title. Keep application titles enabled; if two sessions have the same title, move the source tab to its own window before forking. A session that has not yet been saved cannot be forked.
 

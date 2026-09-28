@@ -41,10 +41,17 @@ internal static class Program
                         Styles = Native.GetWindowLongPtr(hwnd, -20).ToInt64(), Bounds = Native.VisibleBounds(hwnd)
                     }),
                 ForkButtons = TerminalWindows.Find().Select(w => Native.FindWindow(null, $"Terminal Rearranger Fork {w.Handle}"))
-                    .Where(hwnd => hwnd != 0).Select(hwnd => new
+                    .Where(hwnd => hwnd != 0).Select(hwnd =>
                     {
-                        Handle = hwnd.ToInt64(), Owner = Native.GetWindow(hwnd, 4).ToInt64(),
-                        Visible = Native.IsWindowVisible(hwnd), Bounds = Native.VisibleBounds(hwnd)
+                        Rectangle bounds = Native.VisibleBounds(hwnd);
+                        return new
+                        {
+                            Handle = hwnd.ToInt64(), Owner = Native.GetWindow(hwnd, 4).ToInt64(),
+                            Visible = Native.IsWindowVisible(hwnd),
+                            Exposed = Native.GetAncestor(Native.WindowFromPoint(new Native.Point2(
+                                bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2)), 2) == hwnd,
+                            Bounds = bounds
+                        };
                     }),
                 Terminals = TerminalWindows.Find().Select(w => new
                 {

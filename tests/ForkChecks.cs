@@ -128,6 +128,69 @@ internal static partial class Checks
         return 0;
     }
 
+    private sealed class UnfocusedWindow : Form
+    {
+        protected override bool ShowWithoutActivation => true;
+    }
+
+    private static void RunForkButtonHost(string report)
+    {
+        var area = Screen.PrimaryScreen!.WorkingArea;
+        var windows = Enumerable.Range(0, 3).Select(i => new UnfocusedWindow
+        {
+            Text = "Unfocused fork test " + (i + 1), StartPosition = FormStartPosition.Manual,
+            Bounds = new Rectangle(area.Left + 80 + i * 520, area.Top + 150, 480, 300)
+        }).ToArray();
+        foreach (var window in windows) window.Show();
+        File.WriteAllText(report, JsonSerializer.Serialize(windows.Select(w => w.Handle.ToInt64())));
+        Application.Run();
+    }
+
+    private static async Task VerifyUnfocusedForkButtons()
+    {
+        string report = Path.Combine(ArtifactPath, "unfocused-windows.json");
+        File.Delete(report);
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden };
+        start.ArgumentList.Add("--fork-button-host");
+        start.ArgumentList.Add(report);
+        using var host = Process.Start(start)!;
+        try
+        {
+            await Until(() => File.Exists(report) && new FileInfo(report).Length > 0, "Unfocused terminal test windows are ready");
+            var windows = JsonSerializer.Deserialize<long[]>(File.ReadAllText(report))!
+                .Select(h => new TerminalWindow(new nint(h), (uint)host.Id, "test", "test")).ToList();
+            Assert(windows.All(w => w.Handle != Native.GetForegroundWindow()), "Source windows have never received foreground focus");
+            using var buttons = new TerminalForkButtons(() => windows, (_, _) => Task.CompletedTask);
+            buttons.Start();
+            bool AllExposed() => windows.All(w => buttons.Buttons.TryGetValue(w.Handle, out var button) &&
+                button.Visible && IconAtPoint(button) == button.Handle);
+            await Until(AllExposed, "Every unfocused terminal exposes its fork button immediately");
+            nint foreground = Native.GetForegroundWindow();
+            foreach (var display in DisplayInfo.ReadAll())
+            {
+                await new WindowArranger(() => windows).ArrangeAsync(display);
+                await Until(AllExposed, "Rearranging unfocused terminals keeps every fork button above its owner");
+                Assert(Native.GetForegroundWindow() == foreground, "Repairing icon order does not activate a terminal");
+            }
+            var first = buttons.Buttons[windows[0].Handle];
+            using var cover = new UnfocusedWindow { StartPosition = FormStartPosition.Manual,
+                Bounds = Native.VisibleBounds(windows[0].Handle) };
+            cover.Show();
+            await Until(() => !first.Visible && IconAtPoint(first) != first.Handle,
+                "A covering app stays above the unfocused terminal and its icon");
+            cover.Close();
+            await Until(AllExposed, "Uncovering an unfocused terminal restores its icon without a click");
+        }
+        finally
+        {
+            if (!host.HasExited) { host.Kill(); await host.WaitForExitAsync(); }
+        }
+    }
+
+    private static nint IconAtPoint(ForkButtonWindow button) => Native.GetAncestor(Native.WindowFromPoint(
+        new Native.Point2(button.Left + button.Width / 2, button.Top + button.Height / 2)), 2);
+
     private static async Task VerifyTerminalLaunch()
     {
         string directory = Path.Combine(ArtifactPath, "fork's workspace; 文");
