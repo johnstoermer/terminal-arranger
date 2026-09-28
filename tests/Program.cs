@@ -3,7 +3,7 @@ using System.Drawing.Imaging;
 using System.Text.Json;
 using TerminalRearranger;
 
-internal static class Checks
+internal static partial class Checks
 {
     private static int assertions;
     private static readonly List<Form> samples = [];
@@ -14,12 +14,13 @@ internal static class Checks
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.FirstOrDefault() == "fork") return FakeCodex(args);
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         try
         {
-            Geometry(); Classification();
+            Geometry(); Classification(); ForkSelection();
             Directory.CreateDirectory(ArtifactPath);
             BorderPixels();
         }
@@ -73,13 +74,15 @@ internal static class Checks
                 }
                 Assert((Native.GetWindowLongPtr(bar.Handle, -20).ToInt64() & 8) != 0, "Widget has topmost window style");
                 Assert(!TerminalWindows.Find().Any(w => samples.Any(s => s.Handle == w.Handle)), "Real terminal discovery excludes ordinary application windows");
+                await VerifyForkButtons();
+                await VerifyTerminalLaunch();
                 var empty = await new WindowArranger(() => []).ArrangeAsync(DisplayInfo.ReadAll()[0]);
                 Assert(empty.Found == 0 && empty.Arranged == 0, "Empty desktop result");
                 WriteSnapshot(bar);
                 var overlayHandles = bar.FocusBorder.Strips.Select(strip => strip.Handle).ToArray();
                 bar.FocusBorder.Dispose();
                 Assert(overlayHandles.All(hwnd => !Native.IsWindow(hwnd)), "Closing the controller destroys all overlay windows");
-                Console.WriteLine($"PASS: {assertions} assertions; {DisplayInfo.ReadAll().Count} physical monitors; equal widths, refresh, restore, focus tracking, animated border, and overlay cleanup.");
+                Console.WriteLine($"PASS: {assertions} assertions; {DisplayInfo.ReadAll().Count} physical monitors; arrangement, border, fork selection, fork buttons, and Windows Terminal launch.");
                 File.WriteAllText(Path.Combine(ArtifactPath, "test-results.json"), JsonSerializer.Serialize(new { Status = "passed", Assertions = assertions, Displays = results }, new JsonSerializerOptions { WriteIndented = true }));
             }
             catch (Exception ex)

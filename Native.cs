@@ -54,6 +54,12 @@ internal static class Native
     internal static extern nint GetWindow(nint hwnd, uint command);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     internal static extern nint GetWindowLongPtr(nint hwnd, int index);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(nint hwnd, StringBuilder text, int size);
+    [DllImport("user32.dll")]
+    internal static extern nint WindowFromPoint(Point2 point);
+    [DllImport("user32.dll")]
+    internal static extern nint GetAncestor(nint hwnd, uint flags);
     [DllImport("user32.dll")]
     internal static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -127,4 +133,11 @@ internal static class Native
 
     internal static void KeepOnTop(nint hwnd) =>
         SetWindowPos(hwnd, new nint(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+
+    internal static string WindowTitle(nint hwnd)
+    {
+        var text = new StringBuilder(4096);
+        GetWindowText(hwnd, text, text.Capacity);
+        return text.ToString();
+    }
 }

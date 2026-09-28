@@ -12,6 +12,7 @@ internal sealed class FloatingBar : Form
     private readonly bool persist;
     private readonly WindowArranger arranger;
     private readonly FocusBorderController focusBorder;
+    private readonly TerminalForkButtons forkButtons;
     private readonly ToolTip tips = new() { InitialDelay = 500, ReshowDelay = 150, AutoPopDelay = 3500, ShowAlways = true };
     private readonly System.Windows.Forms.Timer pulse = new() { Interval = 75 };
     private readonly List<MonitorButton> monitorButtons = [];
@@ -26,6 +27,7 @@ internal sealed class FloatingBar : Form
     internal ArrangementResult? LastResult { get; private set; }
     internal bool Busy => busy;
     internal FocusBorderController FocusBorder => focusBorder;
+    internal TerminalForkButtons ForkButtons => forkButtons;
 
     internal FloatingBar(Func<List<TerminalWindow>>? findWindows = null, bool persist = true, Func<nint>? foregroundWindow = null)
     {
@@ -34,6 +36,7 @@ internal sealed class FloatingBar : Form
         arranger = new WindowArranger(findWindows);
         Func<List<TerminalWindow>> findTerminals = findWindows ?? TerminalWindows.Find;
         focusBorder = new FocusBorderController(hwnd => findTerminals().Any(w => w.Handle == hwnd), foregroundWindow);
+        forkButtons = new TerminalForkButtons(findTerminals, ForkTerminal);
         Text = "Terminal Rearranger";
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
@@ -72,6 +75,7 @@ internal sealed class FloatingBar : Form
     {
         base.OnShown(e);
         focusBorder.Start();
+        forkButtons.Start();
     }
     protected override CreateParams CreateParams
     {
@@ -182,6 +186,19 @@ internal sealed class FloatingBar : Form
         }
     }
 
+    private async Task ForkTerminal(nint source, CancellationToken cancellationToken)
+    {
+        // Preserve the destination selected when the user clicked. Before the
+        // first arrangement, use the source terminal's current monitor.
+        string display = DisplayInfo.ReadAll().Any(d => d.DeviceName == settings.SelectedDisplay)
+            ? settings.SelectedDisplay! : Screen.FromHandle(source).DeviceName;
+        var sessions = await CodexFork.ReadSessionsAsync(cancellationToken);
+        if (!Native.IsWindow(source)) throw new InvalidOperationException("The source terminal has closed.");
+        var session = CodexSessions.Select(sessions, source, Native.WindowTitle(source));
+        await CodexFork.OpenAsync(session, cancellationToken);
+        if (!IsDisposed) await Arrange(display);
+    }
+
     private void DisplaySettingsChanged(object? sender, EventArgs e)
     {
         if (!IsDisposed && IsHandleCreated)
@@ -268,6 +285,7 @@ internal sealed class FloatingBar : Form
             pulse.Dispose();
             tips.Dispose();
             focusBorder.Dispose();
+            forkButtons.Dispose();
         }
         base.Dispose(disposing);
     }

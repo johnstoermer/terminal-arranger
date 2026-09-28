@@ -7,6 +7,17 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--codex-sessions")
+        {
+            File.WriteAllText(args[1], JsonSerializer.Serialize(CodexSessions.Scan()));
+            return;
+        }
+        if (args.Length == 3 && args[0] == "--report-console" && int.TryParse(args[1], out int processId))
+        {
+            var console = CodexSessions.ConsoleOwner(processId);
+            File.WriteAllText(args[2], console.Window.ToInt64().ToString());
+            return;
+        }
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -28,6 +39,12 @@ internal static class Program
                     {
                         Handle = hwnd.ToInt64(), Visible = Native.IsWindowVisible(hwnd),
                         Styles = Native.GetWindowLongPtr(hwnd, -20).ToInt64(), Bounds = Native.VisibleBounds(hwnd)
+                    }),
+                ForkButtons = TerminalWindows.Find().Select(w => Native.FindWindow(null, $"Terminal Rearranger Fork {w.Handle}"))
+                    .Where(hwnd => hwnd != 0).Select(hwnd => new
+                    {
+                        Handle = hwnd.ToInt64(), Owner = Native.GetWindow(hwnd, 4).ToInt64(),
+                        Visible = Native.IsWindowVisible(hwnd), Bounds = Native.VisibleBounds(hwnd)
                     }),
                 Terminals = TerminalWindows.Find().Select(w => new
                 {
