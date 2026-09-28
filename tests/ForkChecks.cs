@@ -54,8 +54,9 @@ internal static partial class Checks
         {
             var frame = new Rectangle(-2000, -300, 900, 500);
             var icon = ForkButtonWindow.Placement(frame, scale);
-            Assert(frame.Contains(icon) && icon.Width == icon.Height && frame.Right - icon.Right == (int)Math.Round(8 * scale),
-                "Fork icon remains inside the bottom-right corner at each DPI");
+            Assert(frame.Contains(icon) && icon.Width == icon.Height && frame.Right - icon.Right == (int)Math.Round(20 * scale)
+                && frame.Bottom - icon.Bottom == (int)Math.Round(8 * scale),
+                "Fork icon clears the scrollbar at each DPI");
         }
     }
 

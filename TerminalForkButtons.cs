@@ -119,8 +119,9 @@ internal sealed class ForkButtonWindow : Form
 
     internal static Rectangle Placement(Rectangle frame, float scale)
     {
-        int side = (int)Math.Round(28 * scale), inset = (int)Math.Round(8 * scale);
-        return new Rectangle(frame.Right - inset - side, frame.Bottom - inset - side, side, side);
+        int side = (int)Math.Round(28 * scale);
+        int rightInset = (int)Math.Round(20 * scale), bottomInset = (int)Math.Round(8 * scale);
+        return new Rectangle(frame.Right - rightInset - side, frame.Bottom - bottomInset - side, side, side);
     }
 
     internal void FollowOwner()
